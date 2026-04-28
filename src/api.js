@@ -2,7 +2,7 @@
 // Set VITE_API_URL and VITE_API_KEY in your .env file.
 
 const BASE = 'https://custodial-planning-api.onrender.com/api';
-const KEY  = 'custodial-key-2024';
+const KEY  = 'Custodial_Key_2026_R1';
 
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
