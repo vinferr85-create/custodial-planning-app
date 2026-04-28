@@ -1,8 +1,8 @@
 // api.js — Talks to the Azure Functions backend.
 // Set VITE_API_URL and VITE_API_KEY in your .env file.
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:7071/api';
-const KEY  = import.meta.env.VITE_API_KEY  || '';
+const BASE = 'https://custodial-planning-api.onrender.com/api';
+const KEY  = 'custodial-key-2024';
 
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
