@@ -66,6 +66,8 @@ export const MATRIX = {
   "Parking Garage":                                    ["wW","sp","di","gr","sn","wb"],
   "Dining Areas":                                      ["w2","swD","sp","ct","di","rf","pp","ap","mc","gr","wb","fc","dc"],
   "Locker Rooms":                                      ["wD","sw2","sp","sw","dW","ct","di","pp","ap","mc","gr","hd","wb","wd","fc","dc"],
+  "Storage":                                           ["wW","sp","sw","dW","di","gr","hd","wb","fc"],
+  "Garbage Room":                                      ["wD","swD","sp","sw","di","gr","wb","wd","fc","dc"],
 };
 
 export const SPACE_TYPES = Object.keys(MATRIX);

@@ -13,6 +13,8 @@ const RULES = [
   [['parking','garage','parkade'],                                       'Parking Garage'],
   [['dining','cafeteria','cafe','food court','canteen'],                 'Dining Areas'],
   [['locker','change room','dressing room'],                             'Locker Rooms'],
+  [['storage','store room','storeroom','supply room','utility room'],    'Storage'],
+  [['garbage','trash room','waste room','refuse','compactor','bin room'],'Garbage Room'],
   [['elevator','lift'],                                                  'Elevator'],
   [['stairwell','staircase','stairway'],                                 'Stairwell'],
   [['office','admin','administration','faculty office','staff room','conference','boardroom'], 'Office / Admin Space'],

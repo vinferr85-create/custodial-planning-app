@@ -6,13 +6,13 @@ import { matchSpaceType, aiMapSpaceTypes, parseExcelRow } from '../utils/spaceTy
 import { Card, Btn, Badge, Input, Select, PageHeader, DataGrid, StatusBar } from './UI.jsx';
 
 const UNIT_FIELDS = [
-  { k: 'fixtures',   l: 'Fix/Toilets',  d: 1 },
-  { k: 'bins',       l: 'Bins',         d: 1 },
-  { k: 'dispensers', l: 'Dispensers',   d: 1 },
-  { k: 'mirrors',    l: 'Mirrors',      d: 0 },
-  { k: 'appliances', l: 'Appliances',   d: 0 },
-  { k: 'microwaves', l: 'Microwaves',   d: 0 },
-  { k: 'mats',       l: 'Mats',         d: 0 },
+  { k: 'fixtures',   l: 'Fixtures / Toilets',  d: 1 },
+  { k: 'bins',       l: 'Bins',                d: 1 },
+  { k: 'dispensers', l: 'Dispensers',          d: 1 },
+  { k: 'mirrors',    l: 'Mirrors',             d: 0 },
+  { k: 'appliances', l: 'Appliances',          d: 0 },
+  { k: 'microwaves', l: 'Microwaves',          d: 0 },
+  { k: 'mats',       l: 'Mats',               d: 0 },
 ];
 
 const EMPTY = {
@@ -218,8 +218,8 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
 
       {/* Room table */}
       <Card style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.55fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.5fr 0.35fr', minWidth: 860 }}>
-          {['Building', 'Room', 'Flr', 'Space Type', 'Sq Ft', 'Fix.', 'Bins', 'Disp.', 'Mir.', 'App.', 'Micro', 'Clean?', ''].map(h => (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.6fr 0.7fr 0.6fr 0.8fr 0.6fr 0.8fr 0.8fr 0.5fr 0.35fr', minWidth: 1100 }}>
+          {['Building', 'Room', 'Flr', 'Space Type', 'Sq Ft', 'Fixtures', 'Bins', 'Dispensers', 'Mirrors', 'Appliances', 'Microwaves', 'Clean?', ''].map(h => (
             <div key={h} style={{ padding: '6px 7px', fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #ffffff20' }}>{h}</div>
           ))}
           {!shown.length && <div style={{ gridColumn: '1/-1', padding: 24, textAlign: 'center', color: C.g2, fontSize: 13 }}>No rooms yet. Add manually or upload a spreadsheet.</div>}
@@ -237,7 +237,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
           )))}
         </div>
       </Card>
-      <div style={{ marginTop: 6, fontSize: 10, color: C.g2 }}>Fix.=Fixtures/Toilets · Bins=Waste &amp; Recycle · Disp.=Dispensers · Mir.=Mirrors · App.=Appliances · Micro=Microwaves · Click Clean? to toggle</div>
+      <div style={{ marginTop: 6, fontSize: 10, color: C.g2 }}>Click <strong>Clean?</strong> to toggle whether a room requires cleaning. Click <strong>✕</strong> to remove a room.</div>
     </div>
   );
 }
