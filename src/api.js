@@ -1,12 +1,11 @@
-// api.js — Talks to the Azure Functions backend.
-// Set VITE_API_URL and VITE_API_KEY in your .env file.
+// api.js — Talks to the Render backend API.
 
 const BASE = 'https://custodial-planning-api.onrender.com/api';
 const KEY  = 'Custodial_Key_2026_R1';
 
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
-  if (KEY) headers['x-functions-key'] = KEY;
+  if (KEY) headers['x-api-key'] = KEY;
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
