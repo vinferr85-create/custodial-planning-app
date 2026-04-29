@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { C, uid } from '../theme.js';
 import { SPACE_TYPES } from '../data/cleaningMatrix.js';
+import { FLOOR_TYPES, FLOOR_DEFAULT } from '../utils/fte.js';
 import { matchSpaceType, aiMapSpaceTypes, parseExcelRow } from '../utils/spaceTypeMatcher.js';
 import { Card, Btn, Badge, Input, Select, PageHeader, DataGrid, StatusBar } from './UI.jsx';
 
@@ -17,6 +18,7 @@ const UNIT_FIELDS = [
 
 const EMPTY = {
   building: '', roomNumber: '', floor: '1', spaceType: SPACE_TYPES[0],
+  floorType: FLOOR_DEFAULT, hardSplit: 50,
   sqft: '', fixtures: 1, bins: 1, dispensers: 1,
   mirrors: 0, appliances: 0, microwaves: 0, mats: 0,
   requiresCleaning: true, notes: '',
@@ -64,6 +66,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
       const final = mapped.map(r => ({
         id: uid(), building: r.building || 'Unknown', roomNumber: r.roomNumber || '?',
         floor: r.floor || '1', spaceType: r.spaceType || aiMap[r.rawType] || null,
+        floorType: r.floorType || FLOOR_DEFAULT, hardSplit: r.hardSplit || 50,
         sqft: r.sqft, fixtures: r.fixtures, bins: r.bins, dispensers: r.dispensers,
         mirrors: r.mirrors, appliances: r.appliances, microwaves: r.microwaves, mats: r.mats,
         requiresCleaning: true, notes: r.notes,
@@ -107,8 +110,27 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
           <Input label="Floor"       value={f.floor}       onChange={upd('floor')}       placeholder="1" />
           <Select label="Space Type" value={f.spaceType}   onChange={upd('spaceType')}   options={SPACE_TYPES} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr', gap: 7, marginBottom: 7 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 0.9fr 0.6fr 1fr', gap: 7, marginBottom: 7 }}>
           <Input label="Sq Footage" value={f.sqft} onChange={upd('sqft')} type="number" placeholder="220" />
+          <Select label="Floor Type" value={f.floorType} onChange={upd('floorType')} options={FLOOR_TYPES} />
+          {f.floorType === 'Mixed' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={{ ...LBL }}>Hard Floor %</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <input type="range" min="0" max="100" step="5" value={f.hardSplit} onChange={e => upd('hardSplit')(+e.target.value)}
+                  style={{ flex: 1, accentColor: C.teal }} />
+                <span style={{ fontSize: 11, color: C.tealLt, fontWeight: 700, minWidth: 36 }}>{f.hardSplit}%</span>
+              </div>
+              <span style={{ fontSize: 9, color: C.g2 }}>{f.hardSplit}% hard · {100 - f.hardSplit}% carpet</span>
+            </label>
+          )}
+          {f.floorType !== 'Mixed' && (
+            <div style={{ padding: '8px 10px', background: '#ffffff08', borderRadius: 7, fontSize: 11, color: C.g2, display: 'flex', alignItems: 'center' }}>
+              {f.floorType === 'Hard Floor' ? '🪣 Sweep/mop tasks applied · Carpet tasks excluded' : '🧹 Vacuum tasks applied · Sweep/mop tasks excluded'}
+            </div>
+          )}
+        </div>
+        <div style={{ marginBottom: 7 }}>
           <div style={{ background: '#ffffff08', borderRadius: 7, padding: '7px 10px' }}>
             <div style={{ ...LBL, marginBottom: 5 }}>Unit Counts — ISSA Calculations</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 5 }}>
@@ -218,26 +240,34 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
 
       {/* Room table */}
       <Card style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.6fr 0.7fr 0.6fr 0.8fr 0.6fr 0.8fr 0.8fr 0.5fr 0.35fr', minWidth: 1100 }}>
-          {['Building', 'Room', 'Flr', 'Space Type', 'Sq Ft', 'Fixtures', 'Bins', 'Dispensers', 'Mirrors', 'Appliances', 'Microwaves', 'Clean?', ''].map(h => (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.75fr 0.6fr 0.7fr 0.6fr 0.8fr 0.6fr 0.8fr 0.8fr 0.5fr 0.35fr', minWidth: 1200 }}>
+          {['Building', 'Room', 'Flr', 'Space Type', 'Floor Type', 'Sq Ft', 'Fixtures', 'Bins', 'Dispensers', 'Mirrors', 'Appliances', 'Microwaves', 'Clean?', ''].map(h => (
             <div key={h} style={{ padding: '6px 7px', fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #ffffff20' }}>{h}</div>
           ))}
           {!shown.length && <div style={{ gridColumn: '1/-1', padding: 24, textAlign: 'center', color: C.g2, fontSize: 13 }}>No rooms yet. Add manually or upload a spreadsheet.</div>}
-          {shown.map((r, i) => [
-            r.building, r.roomNumber, r.floor || '1',
-            <span style={{ color: C.tealLt, fontSize: 10 }}>{r.spaceType}</span>,
-            Math.round(r.sqft || 0).toLocaleString(),
-            r.fixtures || 1, r.bins || 1, r.dispensers || 1, r.mirrors || 0, r.appliances || 0, r.microwaves || 0,
-            <span style={{ cursor: 'pointer' }} onClick={() => onToggleClean ? onToggleClean(r.id) : setRooms(p => p.map(x => x.id === r.id ? { ...x, requiresCleaning: !x.requiresCleaning } : x))}>
-              <Badge color={r.requiresCleaning ? C.green : C.g2}>{r.requiresCleaning ? 'Yes' : 'No'}</Badge>
-            </span>,
-            <Btn small variant="danger" onClick={() => onDelete ? onDelete(r.id) : setRooms(p => p.filter(x => x.id !== r.id))}>✕</Btn>,
-          ].map((cell, j) => (
-            <div key={j} style={{ padding: '7px 7px', fontSize: 11, borderBottom: '1px solid #ffffff08', background: i % 2 === 0 ? '#ffffff05' : 'transparent', display: 'flex', alignItems: 'center' }}>{cell}</div>
-          )))}
+          {shown.map((r, i) => {
+            const ft = r.floorType || FLOOR_DEFAULT;
+            const ftColor = ft === 'Hard Floor' ? C.tealLt : ft === 'Carpet' ? C.gold : C.amber;
+            const ftLabel = ft === 'Mixed' ? `Mixed ${r.hardSplit||50}/${100-(r.hardSplit||50)}` : ft;
+            return [
+              r.building, r.roomNumber, r.floor || '1',
+              <span style={{ color: C.tealLt, fontSize: 10 }}>{r.spaceType}</span>,
+              <Badge color={ftColor}>{ftLabel}</Badge>,
+              Math.round(r.sqft || 0).toLocaleString(),
+              r.fixtures || 1, r.bins || 1, r.dispensers || 1, r.mirrors || 0, r.appliances || 0, r.microwaves || 0,
+              <span style={{ cursor: 'pointer' }} onClick={() => onToggleClean ? onToggleClean(r.id) : setRooms(p => p.map(x => x.id === r.id ? { ...x, requiresCleaning: !x.requiresCleaning } : x))}>
+                <Badge color={r.requiresCleaning ? C.green : C.g2}>{r.requiresCleaning ? 'Yes' : 'No'}</Badge>
+              </span>,
+              <Btn small variant="danger" onClick={() => onDelete ? onDelete(r.id) : setRooms(p => p.filter(x => x.id !== r.id))}>✕</Btn>,
+            ].map((cell, j) => (
+              <div key={j} style={{ padding: '7px 7px', fontSize: 11, borderBottom: '1px solid #ffffff08', background: i % 2 === 0 ? '#ffffff05' : 'transparent', display: 'flex', alignItems: 'center' }}>{cell}</div>
+            ));
+          })}
         </div>
       </Card>
-      <div style={{ marginTop: 6, fontSize: 10, color: C.g2 }}>Click <strong>Clean?</strong> to toggle whether a room requires cleaning. Click <strong>✕</strong> to remove a room.</div>
+      <div style={{ marginTop: 6, fontSize: 10, color: C.g2 }}>
+        <Badge color={C.tealLt}>Hard Floor</Badge> sweep/mop applied · <Badge color={C.gold}>Carpet</Badge> vacuum applied · <Badge color={C.amber}>Mixed</Badge> both applied proportionally · Click <strong>Clean?</strong> to toggle · <strong>✕</strong> to remove
+      </div>
     </div>
   );
 }

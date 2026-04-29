@@ -83,11 +83,25 @@ export function findCol(row, patterns) {
 export function parseExcelRow(row) {
   const n = (v, d = 0) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
   const s = (v, d = '') => String(v || d).trim();
+
+  // Parse floor type from spreadsheet
+  function parseFloorType(raw) {
+    if (!raw) return 'Hard Floor';
+    const r = raw.toString().toLowerCase();
+    if (r.includes('carpet') || r.includes('cpt')) return 'Carpet';
+    if (r.includes('mixed') || r.includes('both') || r.includes('combo')) return 'Mixed';
+    return 'Hard Floor'; // default
+  }
+
+  const rawFloor = findCol(row, ['floortype','flooring','floor_type','floorcover','flooringtype','surfacetype','surface']);
+
   return {
     building:    s(findCol(row, ['buildingname','building','bldgname','bldg'])),
     roomNumber:  s(findCol(row, ['roomnumber','roomnum','roomno','roomid','room'])),
     floor:       s(findCol(row, ['floornumber','floor','flr','level','storey','story']), '1'),
     rawType:     s(findCol(row, ['spacetype','roomtype','spacecat','category','roomuse','description','roomname','spacename'])),
+    floorType:   parseFloorType(rawFloor),
+    hardSplit:   n(findCol(row, ['hardsplit','hardfloorpct','hardpct','hardpercent']), 50),
     sqft:        n(findCol(row, ['squarefeet','squarefootage','sqft','sqf','grosssqft','netsqft','area','size'])),
     fixtures:    n(findCol(row, ['fixtures','fixture','toilets','urinals','sinks']), 1),
     bins:        n(findCol(row, ['wastebins','recyclingbins','trashbins','bins','bin']), 1),

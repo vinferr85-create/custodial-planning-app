@@ -153,7 +153,7 @@ export default function App() {
           ))}
         </nav>
         <div style={{ padding: '8px 13px', borderTop: '1px solid #ffffff10', fontSize: 9, color: C.g3 }}>
-          Saved to Azure SQL
+          Saved to database
         </div>
       </div>
 
@@ -164,7 +164,7 @@ export default function App() {
         {tab === 'rooms'   && <RoomInventory   rooms={rooms}  setRooms={setRooms}
                                 onAdd={handleAddRoom} onDelete={handleDeleteRoom}
                                 onBulkAdd={handleBulkAddRooms} onToggleClean={handleToggleClean} />}
-        {tab === 'fte'     && <FTECalculator   rooms={rooms}  factors={factors} />}
+        {tab === 'fte'     && <FTECalculator   rooms={rooms}  factors={factors} setFactors={setFactors} onSaveFactors={handleSaveFactors} />}
         {tab === 'roster'  && <CustodianRoster custs={custs}  setCusts={setCusts} rooms={rooms}
                                 onAdd={handleAddCust} onDelete={handleDeleteCust} onUpdate={handleUpdateCust} />}
         {tab === 'sched'   && <Schedule        rooms={rooms}  custs={custs} />}
