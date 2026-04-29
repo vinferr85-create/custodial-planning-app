@@ -16,6 +16,6 @@ export const C = {
 export const uid = () => Math.random().toString(36).slice(2, 8);
 
 export const DAYS    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-export const SHIFTS  = ['Day (7am–3pm)', 'Evening (3pm–11pm)'];
+export const SHIFTS  = ['Day (7am–3:30pm)', 'Afternoon (2pm–10:30pm)', 'Night (10pm–6:30am)'];
 export const DOFF    = ['Sat-Sun','Sun-Mon','Mon-Tue','Fri-Sat'];
-export const PROD_HRS = 7;
+export const PROD_HRS = 7.5;

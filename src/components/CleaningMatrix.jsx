@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { C } from '../theme.js';
-import { SPACE_TYPES, ISSA_TASKS, FREQ_COLOR, UNIT_LABEL } from '../data/cleaningMatrix.js';
+import { SPACE_TYPES, ISSA_TASKS, FREQ_COLOR, FREQ_WEEKS, UNIT_LABEL } from '../data/cleaningMatrix.js';
 import { Card, Btn, Badge, PageHeader } from './UI.jsx';
 
 function buildInitialTasks() {
@@ -9,27 +9,34 @@ function buildInitialTasks() {
   );
 }
 
-const FREQ_OPTIONS = ['Daily','2x Weekly','Weekly','Monthly','Quarterly','6 Months','Annual','As required','On Demand'];
-const UNIT_OPTIONS = Object.entries(UNIT_LABEL).map(([k, v]) => ({ code: k, label: v }));
+const BASE_FREQS    = ['2x Daily','Daily','2x Weekly','Weekly','Monthly','Quarterly','6 Months','Annual','As required','On Demand'];
+const UNIT_OPTIONS  = Object.entries(UNIT_LABEL).map(([k, v]) => ({ code: k, label: v }));
 
 export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
-  const [allTasks, setAllTasks]       = useState(buildInitialTasks);
-  const [allTypes, setAllTypes]       = useState(SPACE_TYPES);
-  const [sel, setSel]                 = useState(SPACE_TYPES[0]);
-  const [flt, setFlt]                 = useState('All');
-  const [showAddType, setShowAddType] = useState(false);
-  const [newTypeName, setNewTypeName] = useState('');
-  const [newTypeDesc, setNewTypeDesc] = useState('');
-  const [aiLoading, setAiLoading]     = useState(false);
-  const [aiError, setAiError]         = useState('');
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [newTask, setNewTask]         = useState({ task: '', unit: 's', time: '', freq: 'Daily' });
+  const [allTasks, setAllTasks]         = useState(buildInitialTasks);
+  const [allTypes, setAllTypes]         = useState(SPACE_TYPES);
+  const [customFreqs, setCustomFreqs]   = useState([]);
+  const [sel, setSel]                   = useState(SPACE_TYPES[0]);
+  const [flt, setFlt]                   = useState('All');
+  const [showAddType, setShowAddType]   = useState(false);
+  const [newTypeName, setNewTypeName]   = useState('');
+  const [newTypeDesc, setNewTypeDesc]   = useState('');
+  const [aiLoading, setAiLoading]       = useState(false);
+  const [aiError, setAiError]           = useState('');
+  const [showAddTask, setShowAddTask]   = useState(false);
+  const [newTask, setNewTask]           = useState({ task: '', unit: 's', time: '', freq: 'Daily' });
+  const [showAddFreq, setShowAddFreq]   = useState(false);
+  const [newFreqName, setNewFreqName]   = useState('');
+  const [newFreqMult, setNewFreqMult]   = useState('');
+
+  const allFreqOptions = [...BASE_FREQS, ...customFreqs.map(f => f.name)];
 
   const fac       = factors[sel] ?? 1;
   const selTasks  = allTasks[sel] || [];
   const tasks     = selTasks.filter(t => flt === 'All' || t.freq === flt);
-  const dailyMins = selTasks.filter(t => t.freq === 'Daily').reduce((a, t) => a + t.time, 0);
-  const allFreqs  = ['All', ...new Set(Object.values(allTasks).flat().map(t => t.freq))];
+  const dailyMins = selTasks.filter(t => t.freq === 'Daily' || t.freq === '2x Daily')
+                             .reduce((a, t) => a + t.time * (t.freq === '2x Daily' ? 2 : 1), 0);
+  const usedFreqs = ['All', ...new Set(Object.values(allTasks).flat().map(t => t.freq))];
 
   function setFac(v) {
     const n = parseFloat(v);
@@ -43,6 +50,11 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
     setAllTasks(p => ({ ...p, [sel]: p[sel].filter(t => t.id !== taskId) }));
   }
 
+  // Change frequency of an existing task inline
+  function changeTaskFreq(taskId, newFreq) {
+    setAllTasks(p => ({ ...p, [sel]: p[sel].map(t => t.id === taskId ? { ...t, freq: newFreq } : t) }));
+  }
+
   function addManualTask() {
     if (!newTask.task || !newTask.time) return;
     const id   = `${sel}-custom-${Date.now()}`;
@@ -50,6 +62,14 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
     setAllTasks(p => ({ ...p, [sel]: [...(p[sel] || []), { ...newTask, unit, uc: newTask.unit, time: parseFloat(newTask.time), id }] }));
     setNewTask({ task: '', unit: 's', time: '', freq: 'Daily' });
     setShowAddTask(false);
+  }
+
+  function addCustomFreq() {
+    if (!newFreqName.trim()) return;
+    const mult = parseFloat(newFreqMult);
+    if (isNaN(mult) || mult < 0) return;
+    setCustomFreqs(p => [...p, { name: newFreqName.trim(), mult }]);
+    setNewFreqName(''); setNewFreqMult(''); setShowAddFreq(false);
   }
 
   async function generateSpaceType() {
@@ -62,7 +82,7 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514', max_tokens: 1500,
-          messages: [{ role: 'user', content: `You are a facilities management expert using ISSA 612 cleaning standards. Generate a cleaning task list for this space type: "${newTypeName}"${newTypeDesc ? `. Context: ${newTypeDesc}` : ''}. Return ONLY a valid JSON array with no markdown. Each item must have: "task" (string), "unit" (one of: s=per 100 sqft, f=per fixture/unit, b=per bin, d=per dispenser, m=per mirror, a=per appliance, t=per mat), "time" (number, ISSA minutes per unit), "freq" (one of: Daily, 2x Weekly, Weekly, Monthly, Quarterly, 6 Months, Annual, As required). Include 8-15 realistic tasks.` }],
+          messages: [{ role: 'user', content: `You are a facilities management expert using ISSA 612 cleaning standards. Generate a cleaning task list for this space type: "${newTypeName}"${newTypeDesc ? `. Context: ${newTypeDesc}` : ''}. Return ONLY a valid JSON array with no markdown. Each item must have: "task" (string), "unit" (one of: s=per 100 sqft, f=per fixture/unit, b=per bin, d=per dispenser, m=per mirror, a=per appliance, t=per mat), "time" (number, ISSA minutes per unit), "freq" (one of: 2x Daily, Daily, 2x Weekly, Weekly, Monthly, Quarterly, 6 Months, Annual, As required). Include 8-15 realistic tasks.` }],
         }),
       });
       const data = await res.json();
@@ -85,12 +105,12 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
     setSel(allTypes.find(t => t !== name) || allTypes[0]);
   }
 
-  const IS = { background: '#ffffff0d', border: '1px solid #ffffff22', borderRadius: 7, padding: '7px 9px', color: C.off, fontSize: 12, outline: 'none' };
+  const IS  = { background: '#ffffff0d', border: '1px solid #ffffff22', borderRadius: 7, padding: '7px 9px', color: C.off, fontSize: 12, outline: 'none' };
   const LBL = { fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.06em' };
 
   return (
     <div>
-      <PageHeader title="Cleaning Matrix" sub="Tasks from Cleaning_matrix.xlsx (Rev2). Remove tasks, add custom space types, or adjust the factor." />
+      <PageHeader title="Cleaning Matrix" sub="Tasks from Cleaning_matrix.xlsx (Rev2). Edit frequencies inline, remove tasks, or add custom space types." />
 
       {/* Space type buttons */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
@@ -117,12 +137,12 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginBottom: 10 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={LBL}>Space Type Name *</span>
-              <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="e.g. Server Room, Chapel, Laundry Room"
+              <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="e.g. Server Room, Chapel"
                 style={{ ...IS, border: `1px solid ${C.teal}` }} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={LBL}>Description (optional — helps AI generate better tasks)</span>
-              <input value={newTypeDesc} onChange={e => setNewTypeDesc(e.target.value)} placeholder="e.g. Small room with IT equipment, hard floor, no windows"
+              <input value={newTypeDesc} onChange={e => setNewTypeDesc(e.target.value)} placeholder="e.g. Small room with IT equipment, hard floor"
                 style={IS} />
             </label>
           </div>
@@ -152,9 +172,9 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { l: 'ISSA Daily', v: dailyMins.toFixed(1), c: C.g2 },
-              { l: 'Adjusted',   v: (dailyMins * fac).toFixed(1), c: fac > 1 ? C.red : fac < 1 ? C.green : C.tealLt },
-              { l: 'Δ', v: `${fac >= 1 ? '+' : ''}${((dailyMins * fac) - dailyMins).toFixed(1)}`, c: fac > 1 ? C.red : fac < 1 ? C.green : C.g2 },
+              { l: 'Daily Total',  v: dailyMins.toFixed(1),              c: C.g2 },
+              { l: 'Adjusted',     v: (dailyMins * fac).toFixed(1),       c: fac > 1 ? C.red : fac < 1 ? C.green : C.tealLt },
+              { l: 'Δ',            v: `${fac >= 1 ? '+' : ''}${((dailyMins * fac) - dailyMins).toFixed(1)}`, c: fac > 1 ? C.red : fac < 1 ? C.green : C.g2 },
             ].map(k => (
               <div key={k.l} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: k.c, fontFamily: 'Georgia,serif' }}>{k.v}</div>
@@ -165,20 +185,55 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
         </div>
       </Card>
 
-      {/* Frequency filter + Add Task */}
+      {/* Frequency filter + Add Task + Add Frequency */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 9, alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: C.g2, fontWeight: 700, textTransform: 'uppercase' }}>Freq:</span>
-        {allFreqs.map(f => (
+        <span style={{ fontSize: 10, color: C.g2, fontWeight: 700, textTransform: 'uppercase' }}>Filter:</span>
+        {usedFreqs.map(f => (
           <button key={f} onClick={() => setFlt(f)}
             style={{ padding: '2px 8px', borderRadius: 20, border: `1px solid ${FREQ_COLOR[f] || C.g3}55`, background: flt === f ? (FREQ_COLOR[f] || C.teal) + '33' : 'transparent', color: flt === f ? (FREQ_COLOR[f] || C.tealLt) : C.g2, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
             {f}
           </button>
         ))}
         <span style={{ fontSize: 10, color: C.g2 }}>{tasks.length} tasks</span>
-        <Btn small variant="pri" style={{ marginLeft: 'auto' }} onClick={() => setShowAddTask(p => !p)}>
-          {showAddTask ? '✕ Cancel' : '+ Add Task'}
-        </Btn>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+          <Btn small variant="sec" onClick={() => setShowAddFreq(p => !p)}>
+            {showAddFreq ? '✕' : '+ Frequency'}
+          </Btn>
+          <Btn small variant="pri" onClick={() => setShowAddTask(p => !p)}>
+            {showAddTask ? '✕ Cancel' : '+ Add Task'}
+          </Btn>
+        </div>
       </div>
+
+      {/* Add custom frequency panel */}
+      {showAddFreq && (
+        <Card style={{ marginBottom: 10, background: '#1a1a2e', borderColor: C.g3 + '55' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g2, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Add Custom Frequency</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr auto', gap: 8, alignItems: 'flex-end' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={LBL}>Frequency Name *</span>
+              <input value={newFreqName} onChange={e => setNewFreqName(e.target.value)} placeholder="e.g. 3x Weekly, Every 2 Weeks"
+                style={IS} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={LBL}>Times Per Week (for FTE calc)</span>
+              <input type="number" min="0" step="0.5" value={newFreqMult} onChange={e => setNewFreqMult(e.target.value)} placeholder="e.g. 3 for 3x Weekly"
+                style={IS} />
+            </label>
+            <Btn variant="gold" onClick={addCustomFreq}>Add</Btn>
+          </div>
+          {customFreqs.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: C.g2 }}>
+              Custom: {customFreqs.map(f => (
+                <span key={f.name} style={{ marginRight: 8 }}>{f.name} ({f.mult}×/wk)
+                  <button onClick={() => setCustomFreqs(p => p.filter(x => x.name !== f.name))}
+                    style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 10, marginLeft: 3 }}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Add task panel */}
       {showAddTask && (
@@ -202,7 +257,7 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <span style={LBL}>Frequency</span>
               <select value={newTask.freq} onChange={e => setNewTask(p => ({ ...p, freq: e.target.value }))} style={IS}>
-                {FREQ_OPTIONS.map(f => <option key={f} value={f} style={{ background: C.slate }}>{f}</option>)}
+                {allFreqOptions.map(f => <option key={f} value={f} style={{ background: C.slate }}>{f}</option>)}
               </select>
             </label>
             <Btn variant="gold" onClick={addManualTask}>Add</Btn>
@@ -212,8 +267,8 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
 
       {/* Task table */}
       <Card>
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.1fr 0.75fr 0.85fr 0.9fr 0.45fr 0.3fr', borderBottom: '1px solid #ffffff20' }}>
-          {['Task', 'Unit', 'ISSA (min)', 'Adjusted (min)', 'Frequency', 'Δ', ''].map(h => (
+        <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 1fr 0.65fr 0.75fr 1.3fr 0.4fr 0.28fr', borderBottom: '1px solid #ffffff20' }}>
+          {['Task', 'Unit', 'ISSA (min)', 'Adj (min)', 'Frequency', 'Δ', ''].map(h => (
             <div key={h} style={{ padding: '6px 8px', fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
           ))}
         </div>
@@ -221,16 +276,22 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
         {tasks.map((t, i) => {
           const adj = t.time * fac, diff = adj - t.time;
           return (
-            <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '3fr 1.1fr 0.75fr 0.85fr 0.9fr 0.45fr 0.3fr', background: i % 2 === 0 ? '#ffffff05' : 'transparent', borderBottom: '1px solid #ffffff08' }}>
-              <div style={{ padding: '8px 8px', fontSize: 11, color: C.off, display: 'flex', alignItems: 'center' }}>{t.task}</div>
-              <div style={{ padding: '8px 8px', fontSize: 10, color: C.g2, display: 'flex', alignItems: 'center' }}>{t.unit}</div>
-              <div style={{ padding: '8px 8px', fontSize: 11, color: C.tealLt, fontWeight: 600, display: 'flex', alignItems: 'center' }}>{t.time.toFixed(1)}</div>
-              <div style={{ padding: '8px 8px', fontSize: 11, color: fac === 1 ? C.tealLt : fac > 1 ? C.red : C.green, fontWeight: 700, display: 'flex', alignItems: 'center' }}>{adj.toFixed(1)}</div>
-              <div style={{ padding: '8px 8px', display: 'flex', alignItems: 'center' }}><Badge color={FREQ_COLOR[t.freq] || C.g2}>{t.freq}</Badge></div>
-              <div style={{ padding: '8px 8px', fontSize: 11, color: diff === 0 ? C.g3 : diff > 0 ? C.red : C.green, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+            <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '2.8fr 1fr 0.65fr 0.75fr 1.3fr 0.4fr 0.28fr', background: i % 2 === 0 ? '#ffffff05' : 'transparent', borderBottom: '1px solid #ffffff08' }}>
+              <div style={{ padding: '7px 8px', fontSize: 11, color: C.off, display: 'flex', alignItems: 'center' }}>{t.task}</div>
+              <div style={{ padding: '7px 8px', fontSize: 10, color: C.g2, display: 'flex', alignItems: 'center' }}>{t.unit}</div>
+              <div style={{ padding: '7px 8px', fontSize: 11, color: C.tealLt, fontWeight: 600, display: 'flex', alignItems: 'center' }}>{t.time.toFixed(1)}</div>
+              <div style={{ padding: '7px 8px', fontSize: 11, color: fac === 1 ? C.tealLt : fac > 1 ? C.red : C.green, fontWeight: 700, display: 'flex', alignItems: 'center' }}>{adj.toFixed(1)}</div>
+              {/* Editable frequency dropdown */}
+              <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center' }}>
+                <select value={t.freq} onChange={e => changeTaskFreq(t.id, e.target.value)}
+                  style={{ background: (FREQ_COLOR[t.freq] || C.g3) + '22', border: `1px solid ${FREQ_COLOR[t.freq] || C.g3}66`, borderRadius: 20, padding: '3px 8px', color: FREQ_COLOR[t.freq] || C.g2, fontSize: 10, fontWeight: 600, outline: 'none', cursor: 'pointer', width: '100%' }}>
+                  {allFreqOptions.map(f => <option key={f} value={f} style={{ background: C.slate, color: C.off }}>{f}</option>)}
+                </select>
+              </div>
+              <div style={{ padding: '7px 8px', fontSize: 11, color: diff === 0 ? C.g3 : diff > 0 ? C.red : C.green, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
                 {diff === 0 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`}
               </div>
-              <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+              <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <button onClick={() => removeTask(t.id)} title="Remove this task"
                   style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 14, padding: '2px 4px', borderRadius: 4, opacity: 0.7 }}>✕</button>
               </div>
@@ -238,7 +299,7 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
           );
         })}
         <div style={{ marginTop: 11, padding: '8px 11px', background: '#0D737718', borderRadius: 7, fontSize: 11, color: C.g2, borderLeft: `3px solid ${C.teal}` }}>
-          <strong style={{ color: C.tealLt }}>Tip:</strong> Click <strong style={{ color: C.red }}>✕</strong> on any row to remove a task · <strong style={{ color: C.tealLt }}>+ Add Task</strong> to add manually · <strong style={{ color: C.tealLt }}>+ Add Space Type</strong> to create a new type with AI-generated tasks.
+          <strong style={{ color: C.tealLt }}>Tip:</strong> Click the frequency badge on any row to change it · <strong style={{ color: C.red }}>✕</strong> removes a task · <strong style={{ color: C.tealLt }}>+ Frequency</strong> adds a custom frequency · <strong style={{ color: C.tealLt }}>+ Add Space Type</strong> creates a new type with AI.
         </div>
       </Card>
     </div>

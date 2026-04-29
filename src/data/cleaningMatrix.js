@@ -4,7 +4,7 @@
 export const TASK_LIBRARY = {
   wD:  ["Waste & recycling collection, liner replacement","b",2,"Daily"],
   wW:  ["Waste & recycling collection, liner replacement","b",2,"Weekly"],
-  w2:  ["Waste & recycling collection, liner replacement (2×/day)","b",2,"Daily"],
+  w2:  ["Waste & recycling collection, liner replacement (2×/day)","b",2,"2x Daily"],
   swD: ["Sweep and clean all hard flooring","s",5.5,"Daily"],
   sw2: ["Sweep and clean all hard flooring","s",5.5,"2x Weekly"],
   sv:  ["Spot vacuum carpet (incl. walk-off matting)","s",2.5,"Daily"],
@@ -85,14 +85,21 @@ export const ISSA_TASKS = Object.fromEntries(
 
 // Frequency → weekly multiplier for FTE calculations
 export const FREQ_WEEKS = {
-  "Daily": 5, "2x Weekly": 2, "Weekly": 1,
-  "Monthly": 0.25, "Quarterly": 0.083,
-  "6 Months": 0.042, "Annual": 0.019,
-  "On Demand": 0, "As required": 0,
+  "2x Daily":   10,
+  "Daily":       5,
+  "2x Weekly":   2,
+  "Weekly":      1,
+  "Monthly":     0.25,
+  "Quarterly":   0.083,
+  "6 Months":   0.042,
+  "Annual":      0.019,
+  "On Demand":   0,
+  "As required": 0,
 };
 
 // Frequency → display colour
 export const FREQ_COLOR = {
+  "2x Daily":   "#276749",
   "Daily":      "#38A169",
   "2x Weekly":  "#68D391",
   "Weekly":     "#D69E2E",

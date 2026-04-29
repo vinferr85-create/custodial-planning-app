@@ -94,6 +94,13 @@ export default function App() {
     } catch (e) { alert('Failed to delete custodian: ' + e.message); }
   }, []);
 
+  const handleUpdateCust = useCallback(async (id, cust) => {
+    try {
+      await api.updateCustodian(id, cust);
+      setCusts(p => p.map(c => c.id === id ? cust : c));
+    } catch (e) { alert('Failed to update custodian: ' + e.message); }
+  }, []);
+
   // ── Factor save ────────────────────────────────────────────────────────
   const handleSaveFactors = useCallback(async (newFactors) => {
     try { await api.updateFactors(newFactors); }
@@ -159,7 +166,7 @@ export default function App() {
                                 onBulkAdd={handleBulkAddRooms} onToggleClean={handleToggleClean} />}
         {tab === 'fte'     && <FTECalculator   rooms={rooms}  factors={factors} />}
         {tab === 'roster'  && <CustodianRoster custs={custs}  setCusts={setCusts} rooms={rooms}
-                                onAdd={handleAddCust} onDelete={handleDeleteCust} />}
+                                onAdd={handleAddCust} onDelete={handleDeleteCust} onUpdate={handleUpdateCust} />}
         {tab === 'sched'   && <Schedule        rooms={rooms}  custs={custs} />}
         {tab === 'balance' && <WorkloadBalance  rooms={rooms}  custs={custs} />}
       </div>

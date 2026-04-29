@@ -12,7 +12,7 @@ export default function Schedule({ rooms, custs }) {
 
   const bldgs = ['All', ...new Set(custs.map(c => c.building))];
   const shown  = (sched || []).filter(c => {
-    if (fShift !== 'All' && !c.shift.includes(fShift === 'Day' ? 'Day' : 'Evening')) return false;
+    if (fShift !== 'All' && !c.shift.toLowerCase().includes(fShift.toLowerCase())) return false;
     if (fBldg  !== 'All' && c.building !== fBldg) return false;
     return true;
   });
@@ -39,7 +39,7 @@ export default function Schedule({ rooms, custs }) {
       <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 13, flexWrap: 'wrap' }}>
         <Btn variant="gold" small onClick={() => setSched(buildSchedule(custs, rooms))}>↺ Regenerate</Btn>
         <span style={{ color: C.g2, fontSize: 11 }}>Shift:</span>
-        {['All', 'Day', 'Evening'].map(s => <Btn key={s} small variant={fShift === s ? 'pri' : 'sec'} onClick={() => setFS(s)}>{s}</Btn>)}
+        {['All', 'Day', 'Afternoon', 'Night'].map(s => <Btn key={s} small variant={fShift === s ? 'pri' : 'sec'} onClick={() => setFS(s)}>{s}</Btn>)}
         <span style={{ color: C.g2, fontSize: 11 }}>Building:</span>
         {bldgs.map(b => <Btn key={b} small variant={fBldg === b ? 'pri' : 'sec'} onClick={() => setFB(b)}>{b.length > 12 ? b.split(' ')[0] : b}</Btn>)}
         <span style={{ marginLeft: 'auto', fontSize: 11, color: C.g2 }}>{shown.length} custodians</span>
@@ -69,14 +69,16 @@ export default function Schedule({ rooms, custs }) {
                 <td style={{ padding: 8, fontSize: 12, fontWeight: 600, color: C.white, borderRight: '1px solid #ffffff10', position: 'sticky', left: 0, background: ci % 2 === 0 ? '#0f2640' : '#0B1F3A', zIndex: 1 }}>{c.name}</td>
                 <td style={{ padding: 8, fontSize: 11, color: C.g2,   borderRight: '1px solid #ffffff10', position: 'sticky', left: 160, background: ci % 2 === 0 ? '#0f2640' : '#0B1F3A', zIndex: 1 }}>{c.building}</td>
                 <td style={{ padding: 8, borderRight: '1px solid #ffffff10', position: 'sticky', left: 310, background: ci % 2 === 0 ? '#0f2640' : '#0B1F3A', zIndex: 1 }}>
-                  <Badge color={c.shift.includes('Day') ? C.green : C.gold}>{c.shift.includes('Day') ? 'Day' : 'Eve'}</Badge>
+                  <Badge color={c.shiftType === 'night' ? '#9F7AEA' : c.shiftType === 'afternoon' ? C.gold : C.green}>
+                    {c.shiftType === 'night' ? 'Night' : c.shiftType === 'afternoon' ? 'Aft' : 'Day'}
+                  </Badge>
                 </td>
                 {DAYS.map(day => {
                   const dd = c.days[day];
                   if (dd.off) return <td key={day} style={{ padding: '7px 8px', fontSize: 11, color: C.g3, textAlign: 'center', borderRight: '1px solid #ffffff08', background: '#ffffff03' }}>—OFF—</td>;
-                  const isDay = c.shift.includes('Day');
-                  const bg = dd.wknd ? '#1a4d2e22' : isDay ? '#0D737715' : '#E8A83815';
-                  const fc = dd.wknd ? C.green : isDay ? C.tealLt : C.gold;
+                  const st = c.shiftType || 'day';
+                  const bg = dd.wknd ? '#1a4d2e22' : st === 'night' ? '#2d1b6922' : st === 'afternoon' ? '#E8A83815' : '#0D737715';
+                  const fc = dd.wknd ? C.green : st === 'night' ? '#9F7AEA' : st === 'afternoon' ? C.gold : C.tealLt;
                   return (
                     <td key={day} style={{ padding: '7px 8px', fontSize: 10, verticalAlign: 'top', borderRight: '1px solid #ffffff08', background: bg, minWidth: 138 }}>
                       {dd.tasks.map((t, ti) => (
