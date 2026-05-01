@@ -83,22 +83,42 @@ export function findCol(row, patterns) {
   return undefined;
 }
 
-export function parseExcelRow(row) {
-  const n  = (v, d = 0) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
-  // nf: use fieldDefault only when the column is absent entirely; blank cell → 0
-  const nf = (v, d = 0) => v === undefined ? d : (parseFloat(v) || 0);
-  const s  = (v, d = '') => String(v || d).trim();
+export function parseExcelRow(row, _idx = Infinity) {
+  const n = (v, d = 0) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
+  const s = (v, d = '') => String(v || d).trim();
 
-  // Parse floor type from spreadsheet
+  // Returns undefined if column absent (findCol returned undefined),
+  // 0 for blank/non-numeric cells, or the parsed number.
+  // Callers use ?? to supply a default only for the absent-column case.
+  function numOrZero(v) {
+    if (v === undefined) return undefined;
+    const x = parseFloat(v);
+    return isNaN(x) ? 0 : x;
+  }
+
   function parseFloorType(raw) {
     if (!raw) return 'Hard Floor';
     const r = raw.toString().toLowerCase();
     if (r.includes('carpet') || r.includes('cpt')) return 'Carpet';
     if (r.includes('mixed') || r.includes('both') || r.includes('combo')) return 'Mixed';
-    return 'Hard Floor'; // default
+    return 'Hard Floor';
   }
 
   const rawFloor = findCol(row, ['floortype','flooring','floor_type','floorcover','flooringtype','surfacetype','surface']);
+
+  // Log raw findCol results for first 3 rows to diagnose column detection
+  if (_idx < 3) {
+    console.log(`[parseExcelRow row ${_idx}] raw unit values (undefined = column not found, '' = blank cell):`, {
+      fixtures:   findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks']),
+      bins:       findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin']),
+      dispensers: findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser']),
+      mirrors:    findCol(row, ['mirrorcount','mirrors','mirror']),
+      appliances: findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance']),
+      microwaves: findCol(row, ['microwavecount','microwaves','microwave']),
+      mats:       findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat']),
+      _colKeys:   Object.keys(row),
+    });
+  }
 
   return {
     building:    s(findCol(row, ['buildingname','building','bldgname','bldg'])),
@@ -108,13 +128,13 @@ export function parseExcelRow(row) {
     floorType:   parseFloorType(rawFloor),
     hardSplit:   n(findCol(row, ['hardsplit','hardfloorpct','hardpct','hardpercent']), 50),
     sqft:        n(findCol(row, ['squarefeet','squarefootage','sqft','sqf','grosssqft','netsqft','area','size'])),
-    fixtures:    nf(findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks']), 1),
-    bins:        nf(findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin']), 1),
-    dispensers:  nf(findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser']), 1),
-    mirrors:     nf(findCol(row, ['mirrorcount','mirrors','mirror'])),
-    appliances:  nf(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])),
-    microwaves:  nf(findCol(row, ['microwavecount','microwaves','microwave'])),
-    mats:        nf(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])),
+    fixtures:    numOrZero(findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks'])) ?? 1,
+    bins:        numOrZero(findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin'])) ?? 1,
+    dispensers:  numOrZero(findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser'])) ?? 1,
+    mirrors:     numOrZero(findCol(row, ['mirrorcount','mirrors','mirror'])) ?? 0,
+    appliances:  numOrZero(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])) ?? 0,
+    microwaves:  numOrZero(findCol(row, ['microwavecount','microwaves','microwave'])) ?? 0,
+    mats:        numOrZero(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])) ?? 0,
     notes:       s(findCol(row, ['notes','note','comments','comment','remarks'])),
   };
 }
