@@ -202,7 +202,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
                     </select>
                     {r._raw && <div style={{ fontSize: 9, color: C.g2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{r._raw}"</div>}
                   </div>
-                  {[Math.round(r.sqft || 0), r.fixtures || 1, r.bins || 1, r.dispensers || 1, r.mirrors || 0, r.appliances || 0, r.microwaves || 0].map((v, j) => (
+                  {[Math.round(r.sqft || 0), r.fixtures ?? 0, r.bins ?? 0, r.dispensers ?? 0, r.mirrors ?? 0, r.appliances ?? 0, r.microwaves ?? 0].map((v, j) => (
                     <div key={j} style={{ padding: '6px 7px', fontSize: 11, color: C.g2, borderBottom: '1px solid #ffffff08' }}>{v}</div>
                   ))}
                   <div style={{ padding: '6px 7px', borderBottom: '1px solid #ffffff08' }}>
@@ -254,7 +254,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
               <span style={{ color: C.tealLt, fontSize: 10 }}>{r.spaceType}</span>,
               <Badge color={ftColor}>{ftLabel}</Badge>,
               Math.round(r.sqft || 0).toLocaleString(),
-              r.fixtures || 1, r.bins || 1, r.dispensers || 1, r.mirrors || 0, r.appliances || 0, r.microwaves || 0,
+              r.fixtures ?? 0, r.bins ?? 0, r.dispensers ?? 0, r.mirrors ?? 0, r.appliances ?? 0, r.microwaves ?? 0,
               <span style={{ cursor: 'pointer' }} onClick={() => onToggleClean ? onToggleClean(r.id) : setRooms(p => p.map(x => x.id === r.id ? { ...x, requiresCleaning: !x.requiresCleaning } : x))}>
                 <Badge color={r.requiresCleaning ? C.green : C.g2}>{r.requiresCleaning ? 'Yes' : 'No'}</Badge>
               </span>,
