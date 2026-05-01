@@ -80,12 +80,14 @@ export function findCol(row, patterns) {
     const i = normd.findIndex(k => k.includes(p));
     if (i !== -1) return row[keys[i]];
   }
-  return '';
+  return undefined;
 }
 
 export function parseExcelRow(row) {
-  const n = (v, d = 0) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
-  const s = (v, d = '') => String(v || d).trim();
+  const n  = (v, d = 0) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
+  // nf: use fieldDefault only when the column is absent entirely; blank cell → 0
+  const nf = (v, d = 0) => v === undefined ? d : (parseFloat(v) || 0);
+  const s  = (v, d = '') => String(v || d).trim();
 
   // Parse floor type from spreadsheet
   function parseFloorType(raw) {
@@ -106,13 +108,13 @@ export function parseExcelRow(row) {
     floorType:   parseFloorType(rawFloor),
     hardSplit:   n(findCol(row, ['hardsplit','hardfloorpct','hardpct','hardpercent']), 50),
     sqft:        n(findCol(row, ['squarefeet','squarefootage','sqft','sqf','grosssqft','netsqft','area','size'])),
-    fixtures:    n(findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks']), 1),
-    bins:        n(findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin']), 1),
-    dispensers:  n(findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser']), 1),
-    mirrors:     n(findCol(row, ['mirrorcount','mirrors','mirror'])),
-    appliances:  n(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])),
-    microwaves:  n(findCol(row, ['microwavecount','microwaves','microwave'])),
-    mats:        n(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])),
+    fixtures:    nf(findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks']), 1),
+    bins:        nf(findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin']), 1),
+    dispensers:  nf(findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser']), 1),
+    mirrors:     nf(findCol(row, ['mirrorcount','mirrors','mirror'])),
+    appliances:  nf(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])),
+    microwaves:  nf(findCol(row, ['microwavecount','microwaves','microwave'])),
+    mats:        nf(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])),
     notes:       s(findCol(row, ['notes','note','comments','comment','remarks'])),
   };
 }
