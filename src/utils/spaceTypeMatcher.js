@@ -1,28 +1,31 @@
 import { SPACE_TYPES } from '../data/cleaningMatrix.js';
 
 const RULES = [
-  [['washroom','bathroom','toilet','restroom',' wc','lavatory'],        'Common Washroom'],
-  [['kitchenette','kitchen','break room','breakroom','lunchroom'],       'Common Kitchen'],
-  [['employee lounge','staff lounge','faculty lounge'],                  'Employee Lounge'],
-  [['lounge','study room','library','theatre','theater','common room','meeting','seminar','classroom','lecture','multipurpose'], 'Study Rooms / Lounges / Library / Theatre'],
-  [['lobby','atrium','reception','circulation','foyer','waiting','main hall'], 'Lobby / Circulation Space'],
-  [['corridor carpet','carpeted hall'],                                  'Corridor / Common Space (Carpet)'],
-  [['corridor','hallway',' hall ','passage','walkway'],                  'Corridor / Common Space (Hard Floor)'],
-  [['entrance','vestibule','entryway','front door'],                     'Entrances / Vestibules'],
-  [['fitness','gym','exercise','weight room','recreation'],              'Fitness / Gym'],
-  [['parking','garage','parkade'],                                       'Parking Garage'],
-  [['dining','cafeteria','cafe','food court','canteen'],                 'Dining Areas'],
-  [['locker','change room','dressing room'],                             'Locker Rooms'],
-  [['storage','store room','storeroom','supply room','utility room'],    'Storage'],
-  [['garbage','trash room','waste room','refuse','compactor','bin room'],'Garbage Room'],
-  [['elevator','lift'],                                                  'Elevator'],
-  [['stairwell','staircase','stairway'],                                 'Stairwell'],
-  [['office','admin','administration','faculty office','staff room','conference','boardroom'], 'Office / Admin Space'],
+  [['washroom','bathroom','toilet','restroom','lavatory'],                                              'Common Washroom'],
+  [['kitchenette','kitchen','break room','breakroom','lunchroom'],                                     'Common Kitchens'],
+  [['employee lounge','staff lounge','faculty lounge','lounge'],                                       'Lounge'],
+  [['study room','library','theatre','theater','common room','meeting','seminar','classroom','lecture','multipurpose'], 'Study Rooms / Multipurpose Space, etc.'],
+  [['lobby','atrium','reception','circulation','foyer','waiting','main hall'],                         'Lobby / Circulation Space'],
+  [['carpet corridor','carpeted hall','corridor carpet'],                                               'Corridor / Common Space with Carpet'],
+  [['garbage','trash room','waste room','refuse','compactor','bin room'],                              'Corridor / Common Space with Hard Flooring (inc. Garbage Rms)'],
+  [['corridor','hallway','passage','walkway'],                                                          'Corridor / Common Space with Hard Flooring (inc. Garbage Rms)'],
+  [['entrance','vestibule','entryway','front door'],                                                    'Entrances / Vestibules'],
+  [['fitness','gym','exercise','weight room','recreation'],                                             'Gym / Fitness'],
+  [['parking','garage','parkade'],                                                                      'Parking Garage'],
+  [['dining','cafeteria','cafe','food court','canteen'],                                               'Dining Hall / Main Kitchen'],
+  [['storage','store room','storeroom','supply room','utility room','janitor','laundry','mechanical'], 'Utility Rooms (Laundry Room / Storage Space / Janitor Closet, etc.)'],
+  [['elevator','lift'],                                                                                 'Elevator'],
+  [['stairwell','staircase','stairway'],                                                                'Stairwell'],
+  [['office','admin','administration','faculty office','staff room','boardroom'],                      'Office Space / Admin Space'],
 ];
 
 export function matchSpaceType(raw) {
   if (!raw) return null;
-  const s = raw.toLowerCase().trim();
+  const trimmed = raw.trim();
+  // Exact match against valid space types (case-insensitive) — short-circuits keyword rules and AI
+  const exact = SPACE_TYPES.find(st => st.toLowerCase() === trimmed.toLowerCase());
+  if (exact) return exact;
+  const s = trimmed.toLowerCase();
   for (const [keywords, spaceType] of RULES) {
     if (keywords.some(k => s.includes(k))) return spaceType;
   }
@@ -65,15 +68,15 @@ export function findCol(row, patterns) {
     const i = normd.indexOf(p);
     if (i !== -1) return row[keys[i]];
   }
-  // Pass 2: starts-with (patterns ≥5 chars)
+  // Pass 2: starts-with (patterns ≥3 chars)
   for (const p of patterns) {
-    if (p.length < 5) continue;
+    if (p.length < 3) continue;
     const i = normd.findIndex(k => k.startsWith(p));
     if (i !== -1) return row[keys[i]];
   }
-  // Pass 3: contains (patterns ≥6 chars)
+  // Pass 3: contains (patterns ≥4 chars)
   for (const p of patterns) {
-    if (p.length < 6) continue;
+    if (p.length < 4) continue;
     const i = normd.findIndex(k => k.includes(p));
     if (i !== -1) return row[keys[i]];
   }
@@ -103,13 +106,13 @@ export function parseExcelRow(row) {
     floorType:   parseFloorType(rawFloor),
     hardSplit:   n(findCol(row, ['hardsplit','hardfloorpct','hardpct','hardpercent']), 50),
     sqft:        n(findCol(row, ['squarefeet','squarefootage','sqft','sqf','grosssqft','netsqft','area','size'])),
-    fixtures:    n(findCol(row, ['fixtures','fixture','toilets','urinals','sinks']), 1),
-    bins:        n(findCol(row, ['wastebins','recyclingbins','trashbins','bins','bin']), 1),
-    dispensers:  n(findCol(row, ['soapdispensers','paperdispensers','dispensers','dispenser']), 1),
-    mirrors:     n(findCol(row, ['mirrors','mirror'])),
-    appliances:  n(findCol(row, ['largeappliances','appliances','appliance'])),
-    microwaves:  n(findCol(row, ['microwaves','microwave'])),
-    mats:        n(findCol(row, ['walkoffmats','walkoffmatting','mats','mat'])),
+    fixtures:    n(findCol(row, ['fixturecount','fixtures','fixture','numfixtures','toilets','urinals','sinks']), 1),
+    bins:        n(findCol(row, ['wastebins','recyclingbins','trashbins','bincount','numbins','bins','bin']), 1),
+    dispensers:  n(findCol(row, ['soapdispensers','paperdispensers','dispensercount','dispensers','dispenser']), 1),
+    mirrors:     n(findCol(row, ['mirrorcount','mirrors','mirror'])),
+    appliances:  n(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])),
+    microwaves:  n(findCol(row, ['microwavecount','microwaves','microwave'])),
+    mats:        n(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])),
     notes:       s(findCol(row, ['notes','note','comments','comment','remarks'])),
   };
 }
