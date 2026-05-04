@@ -81,12 +81,6 @@ export function buildSchedule(custs, rooms) {
     const shiftType = getShiftType(cust.shift);
     const rl        = byBuilding[cust.building] || [];
 
-    const byType = {};
-    for (const r of rl) {
-      if (!byType[r.spaceType]) byType[r.spaceType] = [];
-      byType[r.spaceType].push(r);
-    }
-
     const days = {};
     for (const day of DAYS) {
       if (off.has(day)) { days[day] = { off: true }; continue; }
@@ -104,8 +98,29 @@ export function buildSchedule(custs, rooms) {
         taskMap = DAY_TASK;
       }
 
+      // Build per-space-type room lists respecting preferredShift overrides.
+      // Rooms with preferredShift='Auto' use the shift's allowed set.
+      // Rooms with a specific preferredShift only appear for custodians on that shift.
+      const pinnedByType = {};
+      const autoByType   = {};
+      for (const r of rl) {
+        const ps = (r.preferredShift || 'Auto').toLowerCase();
+        if (ps !== 'auto') {
+          if (ps === shiftType) {
+            if (!pinnedByType[r.spaceType]) pinnedByType[r.spaceType] = [];
+            pinnedByType[r.spaceType].push(r);
+          }
+          // else: pinned to a different shift — skip for this custodian
+        } else {
+          if (!autoByType[r.spaceType]) autoByType[r.spaceType] = [];
+          autoByType[r.spaceType].push(r);
+        }
+      }
+
       const tasks = []; let sqft = 0;
-      for (const [st, rl2] of Object.entries(byType)) {
+
+      // Auto rooms: use existing allowed-set logic
+      for (const [st, rl2] of Object.entries(autoByType)) {
         if (!allowed.has(st) || !taskMap[st]) continue;
         const ts = rl2.reduce((a, r) => a + (r.sqft || 0), 0);
         tasks.push({
@@ -114,6 +129,19 @@ export function buildSchedule(custs, rooms) {
         });
         sqft += ts;
       }
+
+      // Pinned rooms: always included for this shift (use taskMap if available, else generic)
+      for (const [st, rl2] of Object.entries(pinnedByType)) {
+        const desc = taskMap[st] || 'Clean per room assignment';
+        const ts   = rl2.reduce((a, r) => a + (r.sqft || 0), 0);
+        tasks.push({
+          spaceType: st, count: rl2.length, sqft: ts, desc,
+          rooms: rl2.slice(0, 3).map(r => r.roomNumber).join(', ') + (rl2.length > 3 ? ` +${rl2.length - 3}` : ''),
+          pinned: true,
+        });
+        sqft += ts;
+      }
+
       days[day] = { off: false, tasks, sqft, wknd, shiftType };
     }
 

@@ -104,6 +104,15 @@ export function parseExcelRow(row, _idx = Infinity) {
     return 'Hard Floor';
   }
 
+  function parsePreferredShift(raw) {
+    if (!raw) return 'Auto';
+    const r = raw.toString().toLowerCase().trim();
+    if (r.includes('day'))   return 'Day';
+    if (r.includes('aft') || r.includes('pm') || r.includes('evening')) return 'Afternoon';
+    if (r.includes('night') || r.includes('ngt')) return 'Night';
+    return 'Auto';
+  }
+
   const rawFloor = findCol(row, ['floortype','flooring','floor_type','floorcover','flooringtype','surfacetype','surface']);
 
   // Log raw findCol results for first 3 rows to diagnose column detection
@@ -135,6 +144,7 @@ export function parseExcelRow(row, _idx = Infinity) {
     appliances:  numOrZero(findCol(row, ['largeappliances','smallappliances','appliancecount','appliances','appliance'])) ?? 0,
     microwaves:  numOrZero(findCol(row, ['microwavecount','microwaves','microwave'])) ?? 0,
     mats:        numOrZero(findCol(row, ['walkoffmatting','walkoffmats','walkoffmat','matcount','mats','mat'])) ?? 0,
-    notes:       s(findCol(row, ['notes','note','comments','comment','remarks'])),
+    notes:          s(findCol(row, ['notes','note','comments','comment','remarks'])),
+    preferredShift: parsePreferredShift(findCol(row, ['preferredshift','cleaningshift','shift','assignedshift'])),
   };
 }

@@ -16,12 +16,14 @@ const UNIT_FIELDS = [
   { k: 'mats',       l: 'Mats',               d: 0 },
 ];
 
+const PREFERRED_SHIFTS = ['Auto', 'Day', 'Afternoon', 'Night'];
+
 const EMPTY = {
   building: '', roomNumber: '', floor: '1', spaceType: SPACE_TYPES[0],
   floorType: FLOOR_DEFAULT, hardSplit: 50,
   sqft: '', fixtures: 1, bins: 1, dispensers: 1,
   mirrors: 0, appliances: 0, microwaves: 0, mats: 0,
-  requiresCleaning: true, notes: '',
+  requiresCleaning: true, notes: '', preferredShift: 'Auto',
 };
 
 export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulkAdd, onToggleClean }) {
@@ -70,6 +72,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
         sqft: r.sqft, fixtures: r.fixtures, bins: r.bins, dispensers: r.dispensers,
         mirrors: r.mirrors, appliances: r.appliances, microwaves: r.microwaves, mats: r.mats,
         requiresCleaning: true, notes: r.notes,
+        preferredShift: r.preferredShift || 'Auto',
         _raw: r.rawType, _noMatch: !r.spaceType && !aiMap[r.rawType],
         _ai: !r.spaceType && !!aiMap[r.rawType], _fuzzy: r.fuzzy,
       }));
@@ -153,6 +156,7 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
             </div>
           </div>
           <div style={{ flex: 1 }}><Input label="Notes" value={f.notes} onChange={upd('notes')} placeholder="Optional" /></div>
+          <Select label="Preferred Shift" value={f.preferredShift} onChange={upd('preferredShift')} options={PREFERRED_SHIFTS} />
           <Btn style={{ alignSelf: 'flex-end' }} onClick={addRoom}>+ Add Room</Btn>
         </div>
       </Card>
@@ -184,13 +188,13 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
           <>
             <div style={{ padding: '9px 12px', borderRadius: 7, fontSize: 11, background: C.gold + '22', color: C.gold, border: `1px solid ${C.gold}44`, marginBottom: 8 }}>{msg}</div>
             <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #ffffff15', borderRadius: 7, marginBottom: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.8fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr', position: 'sticky', top: 0, zIndex: 1 }}>
-                {['Building', 'Room', 'Flr', 'Space Type', 'Sqft', 'Fix', 'Bins', 'Disp', 'Mir', 'App', 'Micro', 'Match'].map(h => (
+              <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.8fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.5fr 0.4fr', position: 'sticky', top: 0, zIndex: 1 }}>
+                {['Building', 'Room', 'Flr', 'Space Type', 'Sqft', 'Fix', 'Bins', 'Disp', 'Mir', 'App', 'Micro', 'Shift', 'Match'].map(h => (
                   <div key={h} style={{ padding: '5px 7px', fontSize: 9, fontWeight: 700, color: C.g2, textTransform: 'uppercase', background: C.slate, borderBottom: '1px solid #ffffff20' }}>{h}</div>
                 ))}
               </div>
               {prev.rows.map((r, i) => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.8fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr', background: i % 2 === 0 ? '#ffffff05' : 'transparent' }}>
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.8fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.5fr 0.4fr', background: i % 2 === 0 ? '#ffffff05' : 'transparent' }}>
                   <div style={{ padding: '6px 7px', fontSize: 11, color: C.off, borderBottom: '1px solid #ffffff08' }}>{r.building}</div>
                   <div style={{ padding: '6px 7px', fontSize: 11, color: C.g2, borderBottom: '1px solid #ffffff08' }}>{r.roomNumber}</div>
                   <div style={{ padding: '6px 7px', fontSize: 11, color: C.g2, borderBottom: '1px solid #ffffff08' }}>{r.floor}</div>
@@ -205,6 +209,12 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
                   {[Math.round(r.sqft || 0), r.fixtures ?? 0, r.bins ?? 0, r.dispensers ?? 0, r.mirrors ?? 0, r.appliances ?? 0, r.microwaves ?? 0].map((v, j) => (
                     <div key={j} style={{ padding: '6px 7px', fontSize: 11, color: C.g2, borderBottom: '1px solid #ffffff08' }}>{v}</div>
                   ))}
+                  <div style={{ padding: '3px 5px', borderBottom: '1px solid #ffffff08' }}>
+                    <select value={r.preferredShift || 'Auto'} onChange={e => setPrev(p => ({ ...p, rows: p.rows.map(x => x.id === r.id ? { ...x, preferredShift: e.target.value } : x) }))}
+                      style={{ width: '100%', background: '#ffffff12', border: '1px solid #ffffff33', borderRadius: 5, padding: '3px 5px', color: C.white, fontSize: 10, outline: 'none' }}>
+                      {PREFERRED_SHIFTS.map(s => <option key={s} value={s} style={{ background: C.slate }}>{s}</option>)}
+                    </select>
+                  </div>
                   <div style={{ padding: '6px 7px', borderBottom: '1px solid #ffffff08' }}>
                     {r._noMatch && <Badge color={C.red}>⚠</Badge>}
                     {r._ai     && <Badge color={C.teal}>AI</Badge>}
@@ -240,8 +250,8 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
 
       {/* Room table */}
       <Card style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.75fr 0.6fr 0.7fr 0.6fr 0.8fr 0.6fr 0.8fr 0.8fr 0.5fr 0.35fr', minWidth: 1200 }}>
-          {['Building', 'Room', 'Flr', 'Space Type', 'Floor Type', 'Sq Ft', 'Fixtures', 'Bins', 'Dispensers', 'Mirrors', 'Appliances', 'Microwaves', 'Clean?', ''].map(h => (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.5fr 0.35fr 1.2fr 0.75fr 0.6fr 0.7fr 0.6fr 0.8fr 0.6fr 0.8fr 0.8fr 0.65fr 0.5fr 0.35fr', minWidth: 1300 }}>
+          {['Building', 'Room', 'Flr', 'Space Type', 'Floor Type', 'Sq Ft', 'Fixtures', 'Bins', 'Dispensers', 'Mirrors', 'Appliances', 'Microwaves', 'Pref. Shift', 'Clean?', ''].map(h => (
             <div key={h} style={{ padding: '6px 7px', fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #ffffff20' }}>{h}</div>
           ))}
           {!shown.length && <div style={{ gridColumn: '1/-1', padding: 24, textAlign: 'center', color: C.g2, fontSize: 13 }}>No rooms yet. Add manually or upload a spreadsheet.</div>}
@@ -249,12 +259,15 @@ export default function RoomInventory({ rooms, setRooms, onAdd, onDelete, onBulk
             const ft = r.floorType || FLOOR_DEFAULT;
             const ftColor = ft === 'Hard Floor' ? C.tealLt : ft === 'Carpet' ? C.gold : C.amber;
             const ftLabel = ft === 'Mixed' ? `Mixed ${r.hardSplit||50}/${100-(r.hardSplit||50)}` : ft;
+            const ps = r.preferredShift || 'Auto';
+            const psColor = ps === 'Day' ? C.tealLt : ps === 'Afternoon' ? C.gold : ps === 'Night' ? C.g2 : '#ffffff40';
             return [
               r.building, r.roomNumber, r.floor || '1',
               <span style={{ color: C.tealLt, fontSize: 10 }}>{r.spaceType}</span>,
               <Badge color={ftColor}>{ftLabel}</Badge>,
               Math.round(r.sqft || 0).toLocaleString(),
               r.fixtures ?? 0, r.bins ?? 0, r.dispensers ?? 0, r.mirrors ?? 0, r.appliances ?? 0, r.microwaves ?? 0,
+              <Badge color={psColor}>{ps}</Badge>,
               <span style={{ cursor: 'pointer' }} onClick={() => onToggleClean ? onToggleClean(r.id) : setRooms(p => p.map(x => x.id === r.id ? { ...x, requiresCleaning: !x.requiresCleaning } : x))}>
                 <Badge color={r.requiresCleaning ? C.green : C.g2}>{r.requiresCleaning ? 'Yes' : 'No'}</Badge>
               </span>,

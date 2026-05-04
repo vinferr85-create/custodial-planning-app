@@ -3,17 +3,65 @@ import { C, PROD_HRS } from '../theme.js';
 import { Card, Badge, Btn, PageHeader } from './UI.jsx';
 import { calcFTE } from '../utils/fte.js';
 
+// Shift assignments for Ideal Staffing Plan — keyed to actual SPACE_TYPES in cleaningMatrix.js
+const SHIFT_BUCKETS = {
+  day: new Set([
+    'Common Washroom',
+    'Lobby / Circulation Space',
+    'Corridor / Common Space with Carpet',
+    'Corridor / Common Space with Hard Flooring (inc. Garbage Rms)',
+    'Entrances / Vestibules',
+    'Gym / Fitness',
+    'Dining Hall / Main Kitchen',
+  ]),
+  afternoon: new Set([
+    'Office Space / Admin Space',
+    'Common Kitchens',
+    'Lounge',
+    'Elevator',
+    'Stairwell',
+    'Utility Rooms (Laundry Room / Storage Space / Janitor Closet, etc.)',
+  ]),
+  night: new Set([
+    'Study Rooms / Multipurpose Space, etc.',
+    'Parking Garage',
+  ]),
+};
+
+function shiftFor(spaceType) {
+  if (SHIFT_BUCKETS.day.has(spaceType))       return 'day';
+  if (SHIFT_BUCKETS.afternoon.has(spaceType)) return 'afternoon';
+  return 'night';
+}
+
+// Round FTE up to nearest 0.5, then up to whole number
+function staffCount(fte) {
+  return Math.ceil(Math.ceil(fte * 2) / 2);
+}
+
 export default function FTECalculator({ rooms, factors, setFactors, onSaveFactors }) {
-  const cl = rooms.filter(r => r.requiresCleaning);
-  const { mins, hrs, fte } = calcFTE(cl, factors);
+  const [selectedBuilding, setSelectedBuilding] = useState('All');
   const [globalFac, setGlobalFac] = useState('');
+
+  // Building selector options
+  const buildings = ['All', ...new Set(rooms.map(r => r.building).filter(Boolean))];
+
+  // All cleaned rooms — used for global factor operations regardless of building filter
+  const allCl = rooms.filter(r => r.requiresCleaning);
+  const allSpaceTypes = [...new Set(allCl.map(r => r.spaceType))];
+
+  // Filtered rooms for KPIs, breakdown table, and Ideal Staffing
+  const cl = selectedBuilding === 'All'
+    ? allCl
+    : allCl.filter(r => r.building === selectedBuilding);
+
+  const { mins, hrs, fte } = calcFTE(cl, factors);
 
   const bySpace = {};
   for (const r of cl) {
     if (!bySpace[r.spaceType]) bySpace[r.spaceType] = [];
     bySpace[r.spaceType].push(r);
   }
-
   const spaceTypes = Object.keys(bySpace);
   const hasAdj = Object.entries(factors).some(([, v]) => v !== 1);
 
@@ -30,23 +78,58 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
     const n = parseFloat(globalFac);
     if (isNaN(n) || n <= 0) return;
     const rounded = Math.round(n * 100) / 100;
-    const updated = Object.fromEntries(spaceTypes.map(st => [st, rounded]));
+    const updated = Object.fromEntries(allSpaceTypes.map(st => [st, rounded]));
     setFactors(p => ({ ...p, ...updated }));
     onSaveFactors?.({ ...factors, ...updated });
     setGlobalFac('');
   }
 
   function resetAll() {
-    const updated = Object.fromEntries(spaceTypes.map(st => [st, 1]));
+    const updated = Object.fromEntries(allSpaceTypes.map(st => [st, 1]));
     setFactors(p => ({ ...p, ...updated }));
     onSaveFactors?.({ ...factors, ...updated });
   }
+
+  // Ideal Staffing Plan — FTE per shift from filtered rooms
+  const shiftRooms = { day: [], afternoon: [], night: [] };
+  for (const r of cl) shiftRooms[shiftFor(r.spaceType)].push(r);
+  const shiftFTE = {
+    day:       calcFTE(shiftRooms.day,       factors).fte,
+    afternoon: calcFTE(shiftRooms.afternoon, factors).fte,
+    night:     calcFTE(shiftRooms.night,     factors).fte,
+  };
+  const shiftStaff = {
+    day:       staffCount(shiftFTE.day),
+    afternoon: staffCount(shiftFTE.afternoon),
+    night:     staffCount(shiftFTE.night),
+  };
+  const SHIFT_LABELS = [
+    { key: 'day',       label: 'Day',       time: '7am–3pm',  color: C.tealLt },
+    { key: 'afternoon', label: 'Afternoon', time: '3pm–11pm', color: C.gold   },
+    { key: 'night',     label: 'Night',     time: '11pm–7am', color: C.g2     },
+  ];
 
   const LBL = { fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.06em' };
 
   return (
     <div>
       <PageHeader title="FTE Calculator" sub="ISSA 612 task times × unit counts × frequency × adjustment factors" />
+
+      {/* Building filter */}
+      {buildings.length > 2 && (
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          {buildings.map(b => (
+            <Btn key={b} small variant={selectedBuilding === b ? 'pri' : 'sec'} onClick={() => setSelectedBuilding(b)}>
+              {b.length > 14 ? b.split(' ')[0] : b}
+            </Btn>
+          ))}
+          {selectedBuilding !== 'All' && (
+            <span style={{ marginLeft: 4, fontSize: 11, color: C.tealLt, fontWeight: 600 }}>
+              Showing: {selectedBuilding}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
@@ -130,11 +213,9 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
               <div style={{ padding: '8px 8px' }}>
                 <strong style={{ color: isAdj ? C.gold : C.green, fontSize: 12 }}>{r.fte.toFixed(2)}</strong>
               </div>
-              {/* Inline factor display with badge */}
               <div style={{ padding: '8px 8px' }}>
                 <Badge color={fac > 1 ? C.red : fac < 1 ? C.green : C.g2}>×{fac.toFixed(2)}</Badge>
               </div>
-              {/* Inline factor editor */}
               <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <button onClick={() => setFac(sp, (fac - 0.05).toFixed(2))}
                   style={{ background: '#ffffff18', border: '1px solid #ffffff22', borderRadius: 5, color: C.off, cursor: 'pointer', width: 24, height: 24, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
@@ -172,6 +253,58 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
           FTE = weekly hours ÷ ({PROD_HRS} productive hrs × 5 days). Type a factor directly or use +/− buttons. Changes sync with the Cleaning Matrix tab automatically.
         </div>
       </Card>
+
+      {/* Ideal Staffing Plan */}
+      {cl.length > 0 && (
+        <Card style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tealLt, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+            Ideal Staffing Plan
+          </div>
+          <div style={{ fontSize: 11, color: C.g2, marginBottom: 12 }}>
+            If starting fresh, how many custodians are needed and on which shift?
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+            {SHIFT_LABELS.map(({ key, label, time, color }) => {
+              const ft  = shiftFTE[key];
+              const cnt = shiftStaff[key];
+              return (
+                <div key={key} style={{ background: '#ffffff08', borderRadius: 9, padding: '12px 14px', borderLeft: `3px solid ${color}` }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{label} Shift · {time}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'Georgia,serif' }}>{cnt}</div>
+                  <div style={{ fontSize: 11, color: C.g2 }}>Full Time custodian{cnt !== 1 ? 's' : ''}</div>
+                  <div style={{ fontSize: 10, color: C.g3 ?? C.g2, marginTop: 4 }}>{ft.toFixed(2)} FTE</div>
+                  <div style={{ marginTop: 8, fontSize: 10, color: C.g2, lineHeight: 1.5 }}>
+                    {[...SHIFT_BUCKETS[key]].filter(st => bySpace[st]).map(st => (
+                      <div key={st} style={{ color: C.g2 }}>· {st}</div>
+                    ))}
+                    {![...SHIFT_BUCKETS[key]].some(st => bySpace[st]) && (
+                      <div style={{ fontStyle: 'italic' }}>No rooms in this shift</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary line */}
+          <div style={{ background: '#0D737722', borderRadius: 7, padding: '10px 14px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+            {SHIFT_LABELS.map(({ key, label, color }) => (
+              <span key={key} style={{ fontSize: 13, fontWeight: 700, color }}>
+                {label}: {shiftStaff[key]} FT
+              </span>
+            ))}
+            <span style={{ fontSize: 12, color: C.g2, marginLeft: 'auto' }}>
+              Total: {shiftStaff.day + shiftStaff.afternoon + shiftStaff.night} custodians
+            </span>
+          </div>
+
+          <div style={{ padding: '7px 11px', background: '#0a2030', borderRadius: 7, fontSize: 10, color: C.g2, borderLeft: `3px solid ${C.teal}44` }}>
+            Based on ISSA 612 standards with current adjustment factors applied. FTEs are rounded up to the nearest whole custodian per shift.
+            {selectedBuilding !== 'All' && <span style={{ color: C.gold }}> · Filtered to: {selectedBuilding}</span>}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
