@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { C } from './theme.js';
 import api from './api.js';
+import { SPACE_TYPES, ISSA_TASKS } from './data/cleaningMatrix.js';
 
 import Dashboard       from './components/Dashboard.jsx';
 import CleaningMatrix  from './components/CleaningMatrix.jsx';
@@ -20,6 +21,19 @@ const TABS = [
   { id: 'balance', label: 'Workload Balance', icon: '⚖️'  },
 ];
 
+function buildInitialTasks() {
+  return Object.fromEntries(
+    Object.entries(ISSA_TASKS).map(([sp, tasks]) => [sp, tasks.map((t, i) => ({ ...t, id: `${sp}-${i}` }))])
+  );
+}
+
+function loadLS(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
 export default function App() {
   const [tab,     setTab]     = useState('dash');
   const [rooms,   setRooms]   = useState([]);
@@ -27,6 +41,13 @@ export default function App() {
   const [factors, setFactors] = useState({});
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+
+  // Matrix state lifted here so it survives tab changes; seeded from localStorage
+  const [customTasks, setCustomTasks] = useState(() => loadLS('cps_customTasks', buildInitialTasks()));
+  const [customTypes, setCustomTypes] = useState(() => loadLS('cps_customTypes', [...SPACE_TYPES]));
+
+  useEffect(() => { localStorage.setItem('cps_customTasks', JSON.stringify(customTasks)); }, [customTasks]);
+  useEffect(() => { localStorage.setItem('cps_customTypes', JSON.stringify(customTypes)); }, [customTypes]);
 
   // ── Load all data from backend on startup ──────────────────────────────
   useEffect(() => {
@@ -160,11 +181,13 @@ export default function App() {
       {/* ── Main content ────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px', background: C.navy }}>
         {tab === 'dash'    && <Dashboard       rooms={rooms}  custs={custs}   factors={factors} />}
-        {tab === 'matrix'  && <CleaningMatrix  factors={factors} setFactors={setFactors} onSaveFactors={handleSaveFactors} />}
+        {tab === 'matrix'  && <CleaningMatrix  factors={factors} setFactors={setFactors} onSaveFactors={handleSaveFactors}
+                                allTasks={customTasks} setAllTasks={setCustomTasks}
+                                allTypes={customTypes} setAllTypes={setCustomTypes} />}
         {tab === 'rooms'   && <RoomInventory   rooms={rooms}  setRooms={setRooms}
                                 onAdd={handleAddRoom} onDelete={handleDeleteRoom}
                                 onBulkAdd={handleBulkAddRooms} onToggleClean={handleToggleClean} />}
-        {tab === 'fte'     && <FTECalculator   rooms={rooms}  factors={factors} setFactors={setFactors} onSaveFactors={handleSaveFactors} />}
+        {tab === 'fte'     && <FTECalculator   rooms={rooms}  factors={factors} setFactors={setFactors} onSaveFactors={handleSaveFactors} customTasks={customTasks} />}
         {tab === 'roster'  && <CustodianRoster custs={custs}  setCusts={setCusts} rooms={rooms}
                                 onAdd={handleAddCust} onDelete={handleDeleteCust} onUpdate={handleUpdateCust} />}
         {tab === 'sched'   && <Schedule        rooms={rooms}  custs={custs} />}

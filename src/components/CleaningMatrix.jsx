@@ -12,10 +12,9 @@ function buildInitialTasks() {
 const BASE_FREQS    = ['2x Daily','Daily','2x Weekly','Weekly','Monthly','Quarterly','6 Months','Annual','As required','On Demand'];
 const UNIT_OPTIONS  = Object.entries(UNIT_LABEL).map(([k, v]) => ({ code: k, label: v }));
 
-export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
-  const [allTasks, setAllTasks]         = useState(buildInitialTasks);
-  const [allTypes, setAllTypes]         = useState(SPACE_TYPES);
+export default function CleaningMatrix({ factors, setFactors, onSaveFactors, allTasks, setAllTasks, allTypes, setAllTypes }) {
   const [customFreqs, setCustomFreqs]   = useState([]);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [sel, setSel]                   = useState(SPACE_TYPES[0]);
   const [flt, setFlt]                   = useState('All');
   const [showAddType, setShowAddType]   = useState(false);
@@ -105,6 +104,15 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
     setSel(allTypes.find(t => t !== name) || allTypes[0]);
   }
 
+  function resetToDefaults() {
+    localStorage.removeItem('cps_customTasks');
+    localStorage.removeItem('cps_customTypes');
+    setAllTasks(buildInitialTasks());
+    setAllTypes([...SPACE_TYPES]);
+    setSel(SPACE_TYPES[0]);
+    setConfirmReset(false);
+  }
+
   const IS  = { background: '#ffffff0d', border: '1px solid #ffffff22', borderRadius: 7, padding: '7px 9px', color: C.off, fontSize: 12, outline: 'none' };
   const LBL = { fontSize: 10, fontWeight: 700, color: C.g2, textTransform: 'uppercase', letterSpacing: '0.06em' };
 
@@ -128,6 +136,17 @@ export default function CleaningMatrix({ factors, setFactors, onSaveFactors }) {
         <Btn small variant="pri" onClick={() => { setShowAddType(p => !p); setAiError(''); }}>
           {showAddType ? '✕ Cancel' : '+ Add Space Type'}
         </Btn>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>
+          {confirmReset ? (
+            <>
+              <span style={{ fontSize: 11, color: C.red, fontWeight: 600 }}>Reset all matrix changes?</span>
+              <Btn small variant="danger" onClick={resetToDefaults}>Yes, Reset</Btn>
+              <Btn small variant="sec"    onClick={() => setConfirmReset(false)}>Cancel</Btn>
+            </>
+          ) : (
+            <Btn small variant="danger" onClick={() => setConfirmReset(true)}>Reset to ISSA Defaults</Btn>
+          )}
+        </div>
       </div>
 
       {/* Add space type panel */}

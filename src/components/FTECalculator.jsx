@@ -39,7 +39,7 @@ function staffCount(fte) {
   return Math.ceil(Math.ceil(fte * 2) / 2);
 }
 
-export default function FTECalculator({ rooms, factors, setFactors, onSaveFactors }) {
+export default function FTECalculator({ rooms, factors, setFactors, onSaveFactors, customTasks }) {
   const [selectedBuilding, setSelectedBuilding] = useState('All');
   const [globalFac, setGlobalFac] = useState('');
 
@@ -55,7 +55,7 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
     ? allCl
     : allCl.filter(r => r.building === selectedBuilding);
 
-  const { mins, hrs, fte } = calcFTE(cl, factors);
+  const { mins, hrs, fte } = calcFTE(cl, factors, customTasks);
 
   const bySpace = {};
   for (const r of cl) {
@@ -94,9 +94,9 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
   const shiftRooms = { day: [], afternoon: [], night: [] };
   for (const r of cl) shiftRooms[shiftFor(r.spaceType)].push(r);
   const shiftFTE = {
-    day:       calcFTE(shiftRooms.day,       factors).fte,
-    afternoon: calcFTE(shiftRooms.afternoon, factors).fte,
-    night:     calcFTE(shiftRooms.night,     factors).fte,
+    day:       calcFTE(shiftRooms.day,       factors, customTasks).fte,
+    afternoon: calcFTE(shiftRooms.afternoon, factors, customTasks).fte,
+    night:     calcFTE(shiftRooms.night,     factors, customTasks).fte,
   };
   const shiftStaff = {
     day:       staffCount(shiftFTE.day),
@@ -200,7 +200,7 @@ export default function FTECalculator({ rooms, factors, setFactors, onSaveFactor
         {spaceTypes.map((sp, i) => {
           const rl  = bySpace[sp];
           const fac = factors[sp] ?? 1;
-          const r   = calcFTE(rl, factors);
+          const r   = calcFTE(rl, factors, customTasks);
           const sq  = rl.reduce((a, x) => a + (x.sqft || 0), 0);
           const isAdj = fac !== 1;
 

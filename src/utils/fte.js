@@ -9,7 +9,8 @@ export const FLOOR_DEFAULT = 'Hard Floor';
 // Default 50/50 — overridden per room via hardSplit field (0–100)
 const DEFAULT_HARD_SPLIT = 50;
 
-export function calcFTE(rooms, factors = {}) {
+export function calcFTE(rooms, factors = {}, taskOverrides = null) {
+  const taskSource = taskOverrides ?? ISSA_TASKS;
   let mins = 0;
 
   for (const r of rooms) {
@@ -18,7 +19,7 @@ export function calcFTE(rooms, factors = {}) {
     const floorType = r.floorType || FLOOR_DEFAULT;
     const hardSplit = (r.hardSplit ?? DEFAULT_HARD_SPLIT) / 100; // 0.0–1.0
 
-    for (const t of (ISSA_TASKS[r.spaceType] || [])) {
+    for (const t of (taskSource[r.spaceType] || [])) {
       const fw = FREQ_WEEKS[t.freq] ?? 0;
       if (!fw) continue;
 
